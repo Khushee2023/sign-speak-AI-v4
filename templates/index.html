@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture to Speech - Week 4</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+
+        .status-active { background: rgba(0, 255, 0, 0.8); }
+        .status-inactive { background: rgba(255, 0, 0, 0.8); }
+        .status-speaking { background: rgba(255, 165, 0, 0.8); animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .video-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .video-stream {
+            width: 640px;
+            height: 480px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 350px;
+            height: fit-content;
+        }
+
+        .current-detection {
+            margin-bottom: 30px;
+        }
+
+        .current-detection h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #FFD700;
+            display: flex;
+            align-items: center;
+        }
+
+        .detection-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .gesture-name {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00FF7F;
+            margin-bottom: 10px;
+        }
+
+        .gesture-text {
+            font-size: 1.5rem;
+            color: #87CEEB;
+            margin-bottom: 10px;
+        }
+
+        .speech-status {
+            font-size: 1.1rem;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .speech-ready { background: rgba(0, 255, 0, 0.3); color: #00FF7F; }
+        .speech-speaking { background: rgba(255, 165, 0, 0.3); color: #FFA500; }
+        .speech-disabled { background: rgba(255, 0, 0, 0.3); color: #FF6B6B; }
+
+        .controls-section {
+            margin: 25px 0;
+        }
+
+        .controls-section h4 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #FFB6C1;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+            display: inline-block;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .control-button:active {
+            transform: translateY(0);
+        }
+
+        .control-button.active {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #00FF7F;
+        }
+
+        .control-button.inactive {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #FF6B6B;
+        }
+
+        .custom-speech {
+            margin-top: 20px;
+        }
+
+        .speech-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+
+        .speech-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .gestures-reference {
+            margin-top: 25px;
+        }
+
+        .gesture-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #00FF7F;
+            transition: all 0.3s ease;
+        }
+
+        .gesture-item:hover {
+            background: rgba(0, 0, 0, 0.4);
+            transform: translateX(5px);
+        }
+
+        .gesture-mapping {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gesture-mapping .gesture {
+            font-weight: bold;
+            color: #FFD700;
+        }
+
+        .gesture-mapping .arrow {
+            margin: 0 10px;
+            color: #87CEEB;
+        }
+
+        .gesture-mapping .text {
+            color: #98FB98;
+        }
+
+        .instructions {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .instructions h4 {
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .instructions li:before {
+            content: "🔊";
+            position: absolute;
+            left: 0;
+        }
+
+        .activity-log {
+            margin-top: 25px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .activity-log h4 {
+            color: #FFB6C1;
+            margin-bottom: 10px;
+        }
+
+        .log-entry {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            border-left: 3px solid #87CEEB;
+        }
+
+        .log-time {
+            color: #87CEEB;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .video-stream {
+                width: 100%;
+                max-width: 480px;
+                height: auto;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .control-panel {
+                min-width: auto;
+                width: 100%;
+                max-width: 480px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎙️ Gesture to Speech - Week 4</h1>
+        <p class="subtitle">Real-time Hand Gesture to Voice Conversion with Azure TTS</p>
+        <div>
+            <span id="tts-status" class="status-badge status-inactive">TTS: Loading...</span>
+            <span id="speech-status" class="status-badge status-inactive">Speech: Ready</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="video-container">
+            <img src="{{ url_for('video_feed') }}" class="video-stream" alt="Webcam Feed">
+        </div>
+
+        <div class="control-panel">
+            <div class="current-detection">
+                <h3>🎯 Current Detection</h3>
+                <div class="detection-display">
+                    <div class="gesture-name" id="current-gesture">No Hand</div>
+                    <div class="gesture-text" id="current-text">Show your hand</div>
+                    <div class="speech-status speech-ready" id="speech-status">🔇 Ready to speak</div>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <h4>🎛️ Speech Controls</h4>
+                <button id="toggle-speech" class="control-button active" onclick="toggleSpeech()">
+                    🔊 Speech Enabled
+                </button>
+            </div>
+
+            <div class="custom-speech">
+                <h4>💬 Custom Speech</h4>
+                <input type="text" id="custom-text" class="speech-input" placeholder="Type text to speak..." maxlength="200">
+                <button class="control-button" onclick="speakCustomText()">🎤 Speak Text</button>
+            </div>
+
+            <div class="gestures-reference">
+                <h4>🤏 Available Gestures</h4>
+                <div class="gesture-item">
+                    <div class="gesture-mapping">
+                        <span class="gesture">Hello</span>
+                        <span class="arrow">→</span>
+                        <span class="text">"Hello there!"</span>
+                    </div>
+                </div>
+                <div class="gesture-item">
+                    <div class="gesture-mapping">
+                        <span class="gesture">Yes</span>
+                        <span class="arrow">→</span>
+                        <span class="text">"Yes"</span>
+                    </div>
+                </div>
+                <div class="gesture-item">
+                    <div class="gesture-mapping">
+                        <span class="gesture">No</span>
+                        <span class="arrow">→</span>
+                        <span class="text">"No"</span>
+                    </div>
+                </div>
+                <div class="gesture-item">
+                    <div class="gesture-mapping">
+                        <span class="gesture">Thank You</span>
+                        <span class="arrow">→</span>
+                        <span class="text">"Thank you very much"</span>
+                    </div>
+                </div>
+                <div class="gesture-item">
+                    <div class="gesture-mapping">
+                        <span class="gesture">Stop</span>
+                        <span class="arrow">→</span>
+                        <span class="text">"Stop"</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h4>📝 How to Use</h4>
+                <ul>
+                    <li>Hold gestures steady for 1.5 seconds</li>
+                    <li>Listen for Azure TTS voice output</li>
+                    <li>Toggle speech on/off as needed</li>
+                    <li>Test custom speech with text input</li>
+                    <li>Ensure good lighting and hand visibility</li>
+                </ul>
+            </div>
+
+            <div class="activity-log">
+                <h4>📋 Activity Log</h4>
+                <div id="activity-log-content">
+                    <div class="log-entry">
+                        <div class="log-time">System started</div>
+                        <div>Gesture recognition active</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let speechEnabled = true;
+        let lastSpokenText = '';
+
+        // Update system status every 500ms
+        function updateStatus() {
+            fetch('/get_status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update current detection
+                    document.getElementById('current-gesture').textContent = data.gesture;
+                    document.getElementById('current-text').textContent = data.text;
+                    
+                    // Update speech status
+                    const speechStatus = document.getElementById('speech-status');
+                    const ttsStatus = document.getElementById('tts-status');
+                    const headerSpeechStatus = document.getElementById('speech-status');
+                    
+                    if (data.is_speaking) {
+                        speechStatus.textContent = '🔊 Speaking...';
+                        speechStatus.className = 'speech-status speech-speaking';
+                        headerSpeechStatus.className = 'status-badge status-speaking';
+                        headerSpeechStatus.textContent = 'Speech: Active';
+                    } else if (data.speech_enabled) {
+                        speechStatus.textContent = '🔇 Ready to speak';
+                        speechStatus.className = 'speech-status speech-ready';
+                        headerSpeechStatus.className = 'status-badge status-active';
+                        headerSpeechStatus.textContent = 'Speech: Ready';
+                    } else {
+                        speechStatus.textContent = '❌ Speech disabled';
+                        speechStatus.className = 'speech-status speech-disabled';
+                        headerSpeechStatus.className = 'status-badge status-inactive';
+                        headerSpeechStatus.textContent = 'Speech: Off';
+                    }
+                    
+                    // Update TTS status
+                    if (data.speech_enabled) {
+                        ttsStatus.textContent = 'TTS: Active';
+                        ttsStatus.className = 'status-badge status-active';
+                    } else {
+                        ttsStatus.textContent = 'TTS: Disabled';
+                        ttsStatus.className = 'status-badge status-inactive';
+                    }
+                    
+                    // Update toggle button
+                    const toggleButton = document.getElementById('toggle-speech');
+                    if (data.speech_enabled) {
+                        toggleButton.textContent = '🔊 Speech Enabled';
+                        toggleButton.className = 'control-button active';
+                    } else {
+                        toggleButton.textContent = '🔇 Speech Disabled';
+                        toggleButton.className = 'control-button inactive';
+                    }
+                    
+                    speechEnabled = data.speech_enabled;
+                    
+                    // Log new speech events
+                    if (data.last_spoken && data.last_spoken !== lastSpokenText) {
+                        addLogEntry(`Spoke: "${data.last_spoken}"`);
+                        lastSpokenText = data.last_spoken;
+                    }
+                    
+                    // Visual feedback for gesture changes
+                    const gestureElement = document.getElementById('current-gesture');
+                    gestureElement.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        gestureElement.style.transform = 'scale(1)';
+                    }, 200);
+                })
+                .catch(error => {
+                    console.log('Error fetching status:', error);
+                });
+        }
+
+        // Toggle speech functionality
+        function toggleSpeech() {
+            fetch('/toggle_speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                addLogEntry(data.speech_enabled ? 'Speech enabled' : 'Speech disabled');
+            })
+            .catch(error => {
+                console.log('Error toggling speech:', error);
+            });
+        }
+
+        // Speak custom text
+        function speakCustomText() {
+            const textInput = document.getElementById('custom-text');
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                alert('Please enter some text to speak');
+                return;
+            }
+            
+            fetch('/speak_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({text: text})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addLogEntry(`Custom speech: "${text}"`);
+                    textInput.value = ''; // Clear input
+                } else {
+                    alert('Failed to speak text: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.log('Error speaking text:', error);
+            });
+        }
+
+        // Add entry to activity log
+        function addLogEntry(message) {
+            const logContent = document.getElementById('activity-log-content');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <div class="log-time">${timeStr}</div>
+                <div>${message}</div>
+            `;
+            
+            logContent.insertBefore(logEntry, logContent.firstChild);
+            
+            // Keep only last 10 entries
+            while (logContent.children.length > 10) {
+                logContent.removeChild(logContent.lastChild);
+            }
+        }
+
+        // Handle Enter key in custom text input
+        document.getElementById('custom-text').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                speakCustomText();
+            }
+        });
+
+        // Start updating status
+        updateStatus();
+        setInterval(updateStatus, 500);
+
+        // Add smooth transitions
+        document.getElementById('current-gesture').style.transition = 'all 0.3s ease';
+        document.getElementById('current-text').style.transition = 'all 0.3s ease';
+        
+        // Initial log entry
+        addLogEntry('Web interface loaded successfully');
+    </script>
+</body>
+</html>
